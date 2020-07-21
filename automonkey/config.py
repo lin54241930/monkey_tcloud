@@ -37,7 +37,7 @@ class DefaultConfig(object):
 
     ACTIVITY_PATH = 'max.activity.statistics.log'
 
-    TCLOUD_URL = 'http://localhost:8080/v1/monkey'  # Tcloud 对应的地址,可以作为参数传入
+    TCLOUD_URL = 'http://192.168.14.214:8088/v1/monkey'  # Tcloud 对应的地址,可以作为参数传入
 
     OSS_URL = ''  # OSS url
 
