@@ -36,9 +36,9 @@ class Device(object):
         try:
             # connect stuff
             logger.info('开始连接设备 {}'.format(self.device_id))
-            adb_version = 'adb version'
+            adb_version = self.adb_tool.get_adb_version()
             logger.info('Adb Version is : {}'.format(adb_version))
-            all_devices = 'adb devices'
+            all_devices = self.adb_tool.get_device_list()
             logger.info('all devices : {} '.format(all_devices))
 
             if self.adb_tool.check_device_connected(self.device_id):
