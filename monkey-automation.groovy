@@ -36,7 +36,7 @@ node('stf'){
 
     stage('checkout code'){
         print('=================> 拉取代码  <=================')
-        checkout([$class: 'GitSCM', branches: [[name: '*/master']], doGenerateSubmoduleConfigurations: false, extensions: [], submoduleCfg: [], userRemoteConfigs: [[credentialsId: '', url: 'https://github.com/tsbxmw/monkey_tcloud']]])
+        checkout([$class: 'GitSCM', branches: [[name: '*/master']], doGenerateSubmoduleConfigurations: false, extensions: [], submoduleCfg: [], userRemoteConfigs: [[credentialsId: '', url: 'https://github.com/lin54241930/monkey_tcloud.git']]])
         sh 'ls'
         print('=================> 拉取代码  <=================')
     }
