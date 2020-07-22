@@ -28,8 +28,8 @@ class Utils(object):
                 return False
             logger.info(cmd)
             command_process = subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
-                                               executable="/bin/sh")
-            return command_process
+                                               executable="#!/bin/bash")
+            return command_processs
         except Exception as e:
             logger.error(e)
             traceback.print_exc()
