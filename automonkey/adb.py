@@ -331,9 +331,7 @@ class AdbTool(object):
         return tcp_rcv, tcp_snd
 
     def get_adb_version(self):
-        cmd = 'adb version'
-        p = Utils.command_execute(cmd)
-        return self.output(p)
+        os.system('adb devices')
 
     def get_device_list(self):
         try:
