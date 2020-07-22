@@ -331,7 +331,7 @@ class AdbTool(object):
         return tcp_rcv, tcp_snd
 
     def get_adb_version(self):
-        cmd = '{} version'.format(self.adb_command)
+        cmd = 'adb version'
         p = Utils.command_execute(cmd)
         return self.output(p)
 
