@@ -45,10 +45,8 @@ node('stf'){
       if (installAppRequired == "true" || installAppRequired == true){
       //这里默认使用 python3 运行脚本，注意修改 python 版本
         sh 'python run.py run -dn=' + deviceName + ' -pn=' + packageName + ' -rt=' + runTime + ' -adu="' + appDownloadUrl + '" -daa=' + defaultAppActivity + ' -mid=' + monkeyId + ' -tid=' + taskId + ' -turl=' + tcloudUrl + ' -rm=' + runMode + ' -iar=' + installAppRequired
-          // python 'run.py run -dn=' + deviceName + ' -pn=' + packageName + ' -rt=' + runTime + ' -adu="' + appDownloadUrl + '" -daa=' + defaultAppActivity + ' -mid=' + monkeyId + ' -tid=' + taskId + ' -turl=' + tcloudUrl + ' -rm=' + runMode + ' -iar=' + installAppRequired
       }else{
         sh 'python run.py run -dn=' + deviceName + ' -pn=' + packageName + ' -rt=' + runTime + ' -adu="' + appDownloadUrl + '" -daa=' + defaultAppActivity + ' -mid=' + monkeyId + ' -tid=' + taskId + ' -turl=' + tcloudUrl + ' -rm=' + runMode
-        // python 'run.py run -dn=' + deviceName + ' -pn=' + packageName + ' -rt=' + runTime + ' -adu="' + appDownloadUrl + '" -daa=' + defaultAppActivity + ' -mid=' + monkeyId + ' -tid=' + taskId + ' -turl=' + tcloudUrl + ' -rm=' + runMode
       }
     }
 
