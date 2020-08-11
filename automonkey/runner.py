@@ -11,6 +11,7 @@ from .exception import CaseTypeErrorException, FileDownloadErrorException
 from .monkey_runner import MonkeyRunner
 from .tcloud_update import TCloud
 from .utils import Utils
+from .performance_runner import PerformanceRunner
 
 logger = logging.getLogger(__name__)
 
