@@ -4,7 +4,7 @@ import platform
 import re
 import time
 import traceback
-
+import uiautomator2 as u2
 import prettytable
 
 from .exception import LocalPackageNotFoundException
@@ -35,6 +35,33 @@ class AdbTool(object):
     @property
     def adb_command(self):
         return '{} {} '.format(self.command_path, self.command_args)
+    def check_screen_locked(self, times=1):
+        try:
+            if times >= 10:
+                return False
+            logger.info('({}) <尝试{}> 检查设备是否锁屏'.format(self.device_name, times))
+            d = u2.connect(self.device_name)
+            if d.info.get('screenOn') == True:
+                logger.info('({}) 设备是亮屏状态！'.format(self.device_name))
+                d.press("power")
+                logger.info('({}) 关闭屏幕一次！'.format(self.device_name))
+                time.sleep(2)
+                d.unlock()
+                logger.info('({}) 执行一次解锁'.format(self.device_name))
+                d.press("home")
+                logger.info('({}) 按一次home回到桌面'.format(self.device_name))
+                return True
+            else:
+                logger.info('({}) 设备是黑屏状态！'.format(self.device_name))
+                d.unlock()
+                logger.info('({}) 直接执行解锁'.format(self.device_name))
+                d.press("home")
+                logger.info('({}) 按一次home回到桌面'.format(self.device_name))
+                return True
+        except Exception as e:
+            logger.error(e)
+            logger.error(traceback.format_exc())
+            return self.check_screen_locked(times=times + 1)
 
     def push_file(self, source, target):
         logger.info('({}) 将文件 {} 发送到 {}'.format(self.device_name, source, target))
@@ -64,38 +91,6 @@ class AdbTool(object):
         cmd = '{} pull {} {}'.format(self.adb_command, source, target)
         p = Utils.command_execute(cmd)
         return self.output(p)
-
-    def check_screen_locked(self, times=1):
-        """
-        adb shell dumpsys window policy | grep isStatusBarKeyguard 确认是否有锁
-        adb shell dumpsys window policy | grep ScreenOn 是否亮屏
-        """
-        try:
-            if times >= 10:
-                return False
-            logger.info('({}) <尝试{}> 检查设备是否锁屏'.format(self.device_name, times))
-            window_policy = Utils.command_execute(
-                '{} shell dumpsys window policy'.format(self.adb_command)).stdout.read()
-
-            window_policy = Utils.deal_with_python_version(window_policy)
-
-            locked_status = re.findall(r'isStatusBarKeyguard=(\w+)', window_policy)[0]
-            bright_status = re.findall(r'mScreenOnFully=(\w+)', window_policy)[0]
-
-            if locked_status == 'false' and bright_status == 'true':
-                logger.info('({}) 设备是正常开锁状态！'.format(self.device_name))
-                return True
-            elif bright_status == 'false':
-                logger.info('({}) 设备锁屏！'.format(self.device_name))
-                self.wakeup_screen()
-                time.sleep(1)
-                self.unlock_screen()
-                time.sleep(1)
-                return self.check_screen_locked(times=times + 1)
-        except Exception as e:
-            logger.error(e)
-            logger.error(traceback.format_exc())
-            return self.check_screen_locked(times=times + 1)
 
     def start_activity(self, package_name, activity_name):
         try:
@@ -132,6 +127,7 @@ class AdbTool(object):
         p = Utils.command_execute(cmd)
         return self.output(p)
 
+    # 运行随机测试命令
     def run_monkey(self, monkey_command):
         try:
             cmd = '{} {}'.format(self.adb_command, monkey_command)
@@ -141,15 +137,73 @@ class AdbTool(object):
             logger.error(e)
             logger.error(traceback.format_exc())
 
+    #运行性能测试命令
+    # def run_performance(self, performance_command):
+    #     try:
+    #         cmd = '{}'.format(performance_command)
+    #         p = Utils.command_execute(cmd)
+    #         return p
+    #     except Exception as e:
+    #         logger.error(e)
+    #         logger.error(traceback.format_exc())
 
-    def run_performance(self, performance_command):
+    def input_autoinstall(self):
+        #分辨率种类
+        display_class = "720*1080","720*1440","1080*1920","1080*2160","1080*2340"
         try:
-            cmd = '{}'.format(performance_command)
-            p = Utils.command_execute(cmd)
-            return p
+            d = u2.connect(self.device_name)
+            devices_v = d.device_info["version"]
+            devices_version = devices_v[0:3]
+            display = d.device_info["display"]
+            my_display = '{}*{}'.format(display["width"], display["height"])
+            logger.info('当前手机系统版本为 {}'.format(devices_version))
+            logger.info('检测是否是vivo或者OPPO手机 {}'.format(self.device_name))
+            logger.info('当前屏幕分辨率为 {}'.format(my_display))
+            if d.device_info["brand"] == 'vivo':
+                logger.info('检测到vivo手机 {}'.format(self.device_name))
+                if float(devices_version) > 5 and float(devices_version) < 9:
+                    d(resourceId="vivo:id/vivo_adb_install_ok_button").click()
+                else:
+                    logger.info('开始输入密码 {}'.format(self.device_name))
+                    d.xpath('//*[@resource-id="com.bbk.account:id/dialog_pwd"]/android.widget.LinearLayout[1]/android.widget.RelativeLayout[1]').set_text("Pokercity2019")
+                    logger.info('点击确认按钮 {}'.format(self.device_name))
+                    d(resourceId="android:id/button1").click()
+                    logger.info('等待10s检测应用安全性 {}'.format(self.device_name))
+                    d(resourceId="com.sohu.inputmethod.sogou.vivo:id/imeview_keyboard").wait(timeout=10.0)
+                    logger.info('点击安装按钮 {}'.format(self.device_name))
+                    d.click(0.497, 0.858)
+                    return True
+            elif d.device_info["brand"] == 'OPPO':
+                logger.info('检测到OPPO手机 {}'.format(self.device_name))
+                logger.info('开始输入密码 {}'.format(self.device_name))
+                d(resourceId="com.coloros.safecenter:id/et_login_passwd_edit").set_text("Pokercity2019")
+                logger.info('点击确认按钮 {}'.format(self.device_name))
+                d(resourceId="android:id/button1").click()
+                logger.info('等待8s检测应用安全性 {}'.format(self.device_name))
+                time.sleep(8)
+                if d(text="发现广告插件").exists:
+                    d.click(0.686, 0.929)
+                    time.sleep(2)
+                    d.click(0.482, 0.84)
+                    return True
+                else:
+                    if float(devices_version) > 5 and float(devices_version) < 7:
+                        d.click(0.718, 0.957)
+                        return True
+                    elif float(devices_version) > 8 and float(devices_version) < 11:
+                        d.click(0.495, 0.954)
+                        return True
+                    elif float(devices_version) < 5.3 and float(devices_version) >= 5:
+                        d.click(0.498, 0.793)
+                        return True
+                    else:
+                        return True
+            else:
+                return False
         except Exception as e:
             logger.error(e)
             logger.error(traceback.format_exc())
+            return False
 
     def install_package(self, local_package_path, package_name, force_install=False):
         logger.info('({}) 开始安装包 ： {}'.format(self.device_name, local_package_path))
@@ -162,6 +216,7 @@ class AdbTool(object):
                 cmd = '{} install {} > install_log.log'.format(self.adb_command, local_package_path)
 
             p = Utils.command_execute(cmd)
+            self.input_autoinstall()
             result = self.output(p)
             logger.info('({}) {}'.format(self.device_name, result))
 
@@ -224,24 +279,26 @@ class AdbTool(object):
 
         return False
 
-    def check_adb(self):
-        if "ANDROID_HOME" in os.environ:
-            if self.system == "Windows":
-                path = os.path.join(os.environ["ANDROID_HOME"], "platform-tools", "adb.exe")
-                if os.path.exists(path):
-                    self.command_path = path
-                else:
-                    raise EnvironmentError("Adb not found in $ANDROID_HOME path: {}".format(os.environ["ANDROID_HOME"]))
-            else:
-                path = os.path.join(os.environ["ANDROID_HOME"], "platform-tools", "adb")
-                if os.path.exists(path):
-                    self.command_path = path
-                else:
-                    raise EnvironmentError(
-                        "Adb not found in $ANDROID_HOME path: {}.".format(os.environ["ANDROID_HOME"]))
-        else:
-            raise EnvironmentError("Adb not found in $ANDROID_HOME path: {}".format(os.environ["ANDROID_HOME"]))
+    #检测ADB环境变量是否正常
+    # def check_adb(self):
+    #     if "ANDROID_HOME" in os.environ:
+    #         if self.system == "Windows":
+    #             path = os.path.join(os.environ["ANDROID_HOME"], "platform-tools", "adb.exe")
+    #             if os.path.exists(path):
+    #                 self.command_path = path
+    #             else:
+    #                 raise EnvironmentError("Adb not found in $ANDROID_HOME path: {}".format(os.environ["ANDROID_HOME"]))
+    #         else:
+    #             path = os.path.join(os.environ["ANDROID_HOME"], "platform-tools", "adb")
+    #             if os.path.exists(path):
+    #                 self.command_path = path
+    #             else:
+    #                 raise EnvironmentError(
+    #                     "Adb not found in $ANDROID_HOME path: {}.".format(os.environ["ANDROID_HOME"]))
+    #     else:
+    #         raise EnvironmentError("Adb not found in $ANDROID_HOME path: {}".format(os.environ["ANDROID_HOME"]))
 
+    #获取当前界面正在运行的APP
     def get_current_application(self):
         return Utils.command_execute(
             '{} shell dumpsys window w | grep mCurrentFocus'.format(self.adb_command))
@@ -312,7 +369,7 @@ class AdbTool(object):
         for i in result:
             if 'uid' in i.lower():
                 return i.split()[1]
-
+    #获取电池电量
     def get_battery_level(self):
         result = Utils.command_execute('{} shell dumpsys battery'.format(self.adb_command)).stdout.readlines()
         result = Utils.deal_with_python_version(result)
@@ -322,19 +379,15 @@ class AdbTool(object):
         return 0
 
     def get_flow_data_tcp(self, uid):
-        tcp_rcv = \
-            Utils.command_execute("{} shell cat proc/uid_stat/{}/tcp_rcv".format(self.adb_command, uid)).read().split()[
-                0]
-        tcp_snd = \
-            Utils.command_execute("{} shell cat proc/uid_stat/{}/tcp_snd".format(self.adb_command, uid)).read().split()[
-                0]
+        tcp_rcv = Utils.command_execute("{} shell cat proc/uid_stat/{}/tcp_rcv".format(self.adb_command, uid)).read().split()[0]
+        tcp_snd = Utils.command_execute("{} shell cat proc/uid_stat/{}/tcp_snd".format(self.adb_command, uid)).read().split()[0]
         return tcp_rcv, tcp_snd
-
+    #获取adb版本号
     def get_adb_version(self):
         cmd = '{} version'.format(self.adb_command)
         p = Utils.command_execute(cmd)
         return self.output(p)
-
+    #列出所有设备
     def get_device_list(self):
         try:
             cmd = '{} devices'.format(self.command_path)
@@ -357,10 +410,10 @@ class AdbTool(object):
             logger.info(e)
             logger.info(traceback.format_exc())
             return []
-
+    #获取连接正常的设备
     def check_device_connected(self, device):
         return device in self.get_device_list()
-
+    #获取报错日志
     def get_crash_dump_log(self):
         try:
             cmd = '{} shell cat /sdcard/MonkeyLog/crash-dump.log'.format(self.adb_command)
@@ -369,16 +422,16 @@ class AdbTool(object):
         except Exception as e:
             logger.error(e)
             logger.error(traceback.format_exc())
-
+    #解锁屏幕（此处滑动X轴坐标应为1500左右，有些手机滑动解锁需要滑动的距离较大）
     def unlock_screen(self):
         try:
-            cmd = '{} shell input swipe 100 1000 100 20'.format(self.adb_command)
+            cmd = '{} shell input swipe 100 1500 100 20'.format(self.adb_command)
             Utils.command_execute(cmd)
             return True
         except Exception as e:
             logger.error(e)
             logger.error(traceback.format_exc())
-
+    #唤醒屏幕（此处是直接执行的电源键按钮，所以需要检测手机是否在亮屏状态下）
     def wakeup_screen(self):
         try:
             cmd = '{} shell input keyevent 26'.format(self.adb_command)
@@ -387,7 +440,7 @@ class AdbTool(object):
         except Exception as e:
             logger.error(e)
             logger.error(traceback.format_exc())
-
+    #获取bug_report_log
     def get_bug_report_log(self, log_path):
         try:
             cmd = '{} shell bugreport > {}'.format(self.adb_command, log_path)
@@ -402,7 +455,7 @@ class AdbTool(object):
         except Exception as e:
             logger.error(e)
             logger.error(traceback.format_exc())
-
+    #重置bug_report_log
     def reset_bug_report_log(self):
         try:
             logger.info('reset battery stats log now...')
@@ -412,7 +465,7 @@ class AdbTool(object):
         except Exception as e:
             logger.error(e)
             logger.error(traceback.format_exc())
-
+    #设置系统的默认输出
     def set_system_default_input(self, key):
         try:
             if key:
@@ -429,7 +482,7 @@ class AdbTool(object):
                 return True
         except Exception as e:
             logger.error(e)
-
+    #获取内存信息
     def get_memory_info(self, package_name):
         try:
             logger.info('try to get memory information')
@@ -451,7 +504,7 @@ class AdbTool(object):
         except Exception as e:
             logger.error(e)
             return 0, 0
-
+    #获取CPU信息
     def get_cpu(self, package_name):
         try:
             logger.info('try to get cpu information')
@@ -473,7 +526,7 @@ class AdbTool(object):
         except Exception as e:
             logger.error(e)
             return 0, 0
-
+    #清除包的缓存数据
     def clear_package_cache_data(self, package_name):
         try:
             logger.info('try to clear cache data information')

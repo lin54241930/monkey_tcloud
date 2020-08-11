@@ -133,7 +133,7 @@ class MonkeyRunner(Process):
                     running_status = 2
                     self.tcloud.on_device_disconnect_on_running()
                     break
-                self.adb_tool.check_screen_locked()
+                # self.adb_tool.check_screen_locked()
 
                 # process crash anr 改变
                 self.on_process_crash_anr_changed(time_temp)
@@ -335,6 +335,7 @@ class MonkeyRunner(Process):
             self.creat_local_log_path()
 
             # 连接设备
+            self.adb_tool.check_screen_locked()
             self.monkey.result.device_connect_result = self.monkey.device.connect()
 
             if isinstance(self.monkey.result.device_connect_result, DeviceNotConnectedException):
@@ -380,12 +381,12 @@ class MonkeyRunner(Process):
             self.tcloud.on_get_app_version(self.monkey.result.app_version)
 
             # 检查 设备锁屏状态
-            self.monkey.result.check_screen_locked = self.adb_tool.check_screen_locked()
+            # self.monkey.result.check_screen_locked = self.adb_tool.check_screen_locked()
 
-            self.tcloud.on_screen_lock(self.monkey.result.check_screen_locked)
+            # self.tcloud.on_screen_lock(self.monkey.result.check_screen_locked)
 
-            if not self.monkey.result.check_screen_locked:
-                raise CheckScreenLockedFailed
+            # if not self.monkey.result.check_screen_locked:
+            #     raise CheckScreenLockedFailed
 
             self.clear_log_on_device()
             time.sleep(5)
