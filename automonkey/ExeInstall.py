@@ -2,21 +2,21 @@ import os
 import sys
 import time
 import traceback
-import zipfile
 import re
 from multiprocessing import Pool
 import multiprocessing
 import prettytable
+import requests
+import datetime
 import uiautomator2 as u2
 import subprocess
 import logging
 logger = logging.getLogger(__name__)
 
 
-
 def getDevicesAll():
     # 获取devices数量和名称
-    devices = []
+    devices = ["emulator-5560"]
     try:
         for dName_ in os.popen("adb devices"):
             if "\t" in dName_:
@@ -24,8 +24,8 @@ def getDevicesAll():
                     devices.append(dName_.split("\t")[0])
         devices.sort(cmp=None, key=None, reverse=False)
         print(devices)
-    except:
-        pass
+    except Exception as e:
+        print(e)
     print(u"\n设备名称: %s \n总数量:%s台" % (devices, len(devices)))
     return devices
 
@@ -40,39 +40,14 @@ def check_screen_locked(device, d, times=1):
             right_slide_unlock(device, d)
         elif d.device_info["brand"] == 'OPPO' and (float(devices_version) == 7.1 or float(devices_version) == 5.1):
             coordinate_unlock(device, d)
-        # elif d.device_info["brand"] == 'HONOR' and float(devices_version) == 8:
-        #     up_slide_unlock(device, d)
-        # elif d.device_info["brand"] == 'KONKA':
-        #     up_slide_unlock(device, d)
-        # elif d.device_info["brand"] == 'motorola':
-        #     up_slide_unlock(device, d)
-        # elif d.device_info["brand"] == 'Nokia':
-        #     up_slide_unlock(device, d)
-        # elif d.device_info["brand"] == 'DOOV':
-        #     up_slide_unlock(device, d)
-        # elif d.device_info["brand"] == 'OPPO' and float(devices_version) == 4.4:
-        #     up_slide_unlock(device, d)
-        # elif d.device_info["brand"] == 'vivo':
-        #     up_slide_unlock(device, d)
         elif d.device_info["brand"] == 'HUAWEI':
             coordinate_unlock(device, d)
-        # elif (d.device_info["brand"] == 'Xiaomi' or d.device_info["brand"] == 'xiaomi') and (float(devices_version) == 4.4 or float(devices_version) == 7.1):
-        #     up_slide_unlock(device, d)
-        # elif d.device_info["brand"] == 'Meizu':
-        #     up_slide_unlock(device, d)
-        # elif d.device_info["brand"] == 'SMARTISAN':
-        #     up_slide_unlock(device, d)
-        # elif d.device_info["brand"] == 'LeEco':
-        #     up_slide_unlock(device, d)
-        # elif d.device_info["brand"] == 'samsung':
-        #     up_slide_unlock(device, d)
         else:
             up_slide_unlock(device, d)
     except Exception as e:
         print(e)
         print("({}) 解锁失败，第{}次尝试".format(device, times))
         return check_screen_locked(times=times + 1)
-
 
 
 def up_slide_unlock(device, d):
@@ -226,6 +201,7 @@ def input_autoinstall(device, d):
         print(e)
         return False
 
+
 def deal_with_python_version(data):
     if str(sys.version_info.major) == '3':
         if isinstance(data, list):
@@ -235,11 +211,13 @@ def deal_with_python_version(data):
     else:
         return data
 
+
 def output(p):
     if p.stdout:
         return deal_with_python_version(p.stdout.readlines())
     else:
         return deal_with_python_version(p.stderr.readlines())
+
 
 def command_execute(cmd):
     try:
@@ -251,6 +229,7 @@ def command_execute(cmd):
     except Exception as e:
         print(e)
         traceback.print_exc()
+
 
 def get_package_version(packagename, device):
     print('({}) 获取 安装包 版本信息'.format(device))
@@ -268,6 +247,7 @@ def get_package_version(packagename, device):
     else:
         print('({}) {} 没有安装!'.format(device, packagename))
         return None
+
 
 def get_installed_packages(device, show_table=False):
     try:
@@ -287,12 +267,14 @@ def get_installed_packages(device, show_table=False):
         print(e)
         return e
 
+
 def check_package_installed(packagename, device):
     for package in get_installed_packages(device):
         if packagename in package:
             return True
 
     return False
+
 
 def uninstall_package(device, packagename):
     print('({}) 开始卸载 ：{}'.format(device, packagename))
@@ -333,6 +315,16 @@ def get_current_activity(device):
     return None
 
 
+def whether_start_activity(packagename, d):
+    pid = d.app_wait(packagename)  # 等待应用运行, return pid(int)
+    if not pid:
+        print("应用没有启动成功")
+        return "启动成功"
+    else:
+        print("应用启动成功，pid为 %d" % pid)
+        return "启动失败"
+
+
 def start_activity(packagename, device, activity_name):
     try:
         activity_name = '{}/{}'.format(packagename, activity_name)
@@ -346,14 +338,14 @@ def start_activity(packagename, device, activity_name):
         if current_activity == activity_name:
             print('({}) activity 已经启动成功'.format(device))
             return True
-        return result
+        return "启动失败"
     except Exception as e:
         print(e)
         print(traceback.format_exc())
 
 
-def analysis_app_info(d, i):
-    appinfo = d.app_info(i)
+def analysis_app_info(d, packagename):
+    appinfo = d.app_info(packagename)
     print(appinfo)
 
 
@@ -366,7 +358,7 @@ def apk_analysis(download_apk_name):
 
         apk_info = {}
 
-        cmd = '/Users/boke/Library/Android/sdk/build-tools/29.0.3/aapt dump badging {}'.format(download_apk_name)
+        cmd = '/Users/lin/Library/Android/sdk/build-tools/30.0.2/aapt dump badging {}'.format(download_apk_name)
 
         command_process = subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
 
@@ -409,11 +401,69 @@ def apk_analysis(download_apk_name):
         return {}
 
 
+def update_monkey(device_name, device_version, device_screen_size, begin_test_time,
+                                                end_test_time, install_time, package_name, package_version, whether_install,
+                                                whether_start, default_activity):
+    tcloud_url = "http://192.168.31.214:8088"
+    try:
+        print("设备名字：".format(device_name))
+        print("设备版本：".format(device_version))
+        print("屏幕大小：".format(device_screen_size))
+        print("开始时间：".format(begin_test_time))
+        print("结束时间：".format(end_test_time))
+        print("安装时间：".format(install_time))
+        print("测试包名：".format(package_name))
+        print("包版本号：".format(package_version))
+        print("是否安装：".format(whether_install))
+        print("是否启动：".format(whether_start))
+        print("默认activity：".format(default_activity))
+        request_data_template = {
+            "device_name": device_name,
+            "device_version": device_version,
+            "device_screen_size": device_screen_size,
+            "begin_test_time": begin_test_time,
+            "end_test_time": end_test_time,
+            "install_time": install_time,
+            "package_name": package_name,
+            "package_version": package_version,
+            "whether_install": whether_install,
+            "whether_start": whether_start,
+            "default_activity": default_activity
+        }
+        request_data = {}
+
+        for key in request_data_template.keys():
+            value = request_data_template.get(key)
+            if value is not None:
+                request_data[key] = value
+        # print("为啥这个都能输出出来呢？！！！！")
+        # print(request_data)
+
+        request_url = '{}/v1/monkey/test_install/{}'.format(tcloud_url, device_name)
+        print("输出这个request_url看看")
+        print(request_url)
+
+        response = requests.request(method='POST', url=request_url, json=request_data)
+
+        if response.ok:
+            print(response.text)
+            print('({}) update monkey success'.format(device_name))
+            return True
+        return False
+    except Exception as e:
+        print(e)
+        print(traceback.format_exc())
+        return False
+
+
 
 def quickinstall(device):
-    packagename = "com.alipay.hulu"
-    i = "/Users/boke/Downloads/apk/SoloPi.apk"
+    i = "/Users/lin/Downloads/apk/app-debug.apk"
+
+    packagename = apk_analysis(i)['package_name']
     activity_name = apk_analysis(i)['default_activity']
+
+
 
     cmd = '{} -s {} {} {}'.format("adb", device, "install", i)
     name = multiprocessing.current_process().name
@@ -422,23 +472,47 @@ def quickinstall(device):
     # 卸载原有apk
     d = u2.connect(device)
 
-    analysis_app_info(d, i)
+    devices_v = d.device_info["version"]
+    devices_version = devices_v[0:3]
+
+    # analysis_app_info(d, packagename)
     get_package_version(packagename, device)
     uninstall_package(device, packagename)
     try:
         check_screen_locked(device, d)
         print("({}) 开始推送包，请耐心等待...".format((device)))
+        starting = time.time()
         command_execute(cmd)
         time.sleep(6)
         input_autoinstall(device, d)
         time.sleep(5)
         if check_package_installed(packagename, device):
             print('({}) 安装 {} 成功'.format(device, packagename))
+            whether_install = "安装成功"
+            entire = time.time()
+            print('({}) 安装用时{}'.format(device, entire - starting))
             start_activity(packagename, device, activity_name)
+            whether_start = whether_start_activity(packagename, d)
         else:
             print('({}) 安装 {} 失败'.format(device, packagename))
+            whether_install = "安装失败"
     except:
         print("程序异常")
+
+    device_name = device
+    device_version = devices_version
+    device_screen_size = d.device_info["display"]
+    begin_test_time = starting
+    end_test_time = entire
+    install_time = entire - starting
+    package_name = packagename
+    package_version = apk_analysis(i)['version_code']
+    whether_install = whether_install
+    whether_start = whether_start
+    default_activity = activity_name
+    update_monkey(device_name, device_version, device_screen_size, begin_test_time,
+                  end_test_time, install_time, package_name, package_version, whether_install,
+                  default_activity, whether_start)
 
 
 def qainstall(devices):
@@ -453,7 +527,6 @@ def qainstall(devices):
 
 
 if __name__ == "__main__":
-    i = "/Users/boke/Downloads/apk/SoloPi.apk"
     try:
         devices = getDevicesAll()
     except:
