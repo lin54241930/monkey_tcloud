@@ -401,23 +401,13 @@ def apk_analysis(download_apk_name):
         return {}
 
 
-def update_monkey(device_name, device_version, device_screen_size, begin_test_time,
-                                                end_test_time, install_time, package_name, package_version, whether_install,
-                                                whether_start, default_activity):
+def update_monkey(device_id=None, device_name=None, device_version=None, device_screen_size=None, begin_test_time=None,
+                                                end_test_time=None, install_time=None, package_name=None, package_version=None, whether_install=None,
+                                                whether_start=None, default_activity=None):
     tcloud_url = "http://192.168.31.214:8088"
     try:
-        print("设备名字：".format(device_name))
-        print("设备版本：".format(device_version))
-        print("屏幕大小：".format(device_screen_size))
-        print("开始时间：".format(begin_test_time))
-        print("结束时间：".format(end_test_time))
-        print("安装时间：".format(install_time))
-        print("测试包名：".format(package_name))
-        print("包版本号：".format(package_version))
-        print("是否安装：".format(whether_install))
-        print("是否启动：".format(whether_start))
-        print("默认activity：".format(default_activity))
         request_data_template = {
+            "device_id": device_id,
             "device_name": device_name,
             "device_version": device_version,
             "device_screen_size": device_screen_size,
@@ -436,10 +426,8 @@ def update_monkey(device_name, device_version, device_screen_size, begin_test_ti
             value = request_data_template.get(key)
             if value is not None:
                 request_data[key] = value
-        # print("为啥这个都能输出出来呢？！！！！")
-        # print(request_data)
 
-        request_url = '{}/v1/monkey/test_install/{}'.format(tcloud_url, device_name)
+        request_url = '{}/v1/monkey/test_install/{}'.format(tcloud_url, device_id)
         print("输出这个request_url看看")
         print(request_url)
 
@@ -456,14 +444,12 @@ def update_monkey(device_name, device_version, device_screen_size, begin_test_ti
         return False
 
 
-
 def quickinstall(device):
     i = "/Users/lin/Downloads/apk/app-debug.apk"
 
     packagename = apk_analysis(i)['package_name']
     activity_name = apk_analysis(i)['default_activity']
-
-
+    device_id = 888
 
     cmd = '{} -s {} {} {}'.format("adb", device, "install", i)
     name = multiprocessing.current_process().name
@@ -496,23 +482,14 @@ def quickinstall(device):
         else:
             print('({}) 安装 {} 失败'.format(device, packagename))
             whether_install = "安装失败"
+        update_monkey(device_id=device_id, device_name=device, device_version=devices_version,
+                      device_screen_size=d.device_info["display"], begin_test_time=starting,
+                      end_test_time=entire, install_time=entire - starting, package_name=packagename,
+                      package_version=apk_analysis(i)['version_code'], whether_install=whether_install,
+                      whether_start=whether_start,default_activity=activity_name)
     except:
         print("程序异常")
 
-    device_name = device
-    device_version = devices_version
-    device_screen_size = d.device_info["display"]
-    begin_test_time = starting
-    end_test_time = entire
-    install_time = entire - starting
-    package_name = packagename
-    package_version = apk_analysis(i)['version_code']
-    whether_install = whether_install
-    whether_start = whether_start
-    default_activity = activity_name
-    update_monkey(device_name, device_version, device_screen_size, begin_test_time,
-                  end_test_time, install_time, package_name, package_version, whether_install,
-                  default_activity, whether_start)
 
 
 def qainstall(devices):
