@@ -17,7 +17,6 @@ import subprocess
 
 def getDevicesAll():
     # 获取devices数量和名称
-    devices = []
     try:
         for dName_ in os.popen("adb devices"):
             if "\t" in dName_:
@@ -327,10 +326,10 @@ def whether_start_activity(packagename, d):
     pid = d.app_wait(packagename)  # 等待应用运行, return pid(int)
     if not pid:
         print("应用没有启动成功")
-        return "启动成功"
+        return "success"
     else:
         print("应用启动成功，pid为 %d" % pid)
-        return "启动失败"
+        return "file"
 
 
 def start_activity(packagename, device, activity_name):
@@ -346,7 +345,7 @@ def start_activity(packagename, device, activity_name):
         if current_activity == activity_name:
             print('({}) activity 已经启动成功'.format(device))
             return True
-        return "启动失败"
+        return "file"
     except Exception as e:
         print(e)
         print(traceback.format_exc())
@@ -366,7 +365,6 @@ def apk_analysis(download_apk_name):
 
         apk_info = {}
 
-        cmd = '/Users/boke/Library/Android/sdk/build-tools/29.0.3/aapt dump badging {}'.format(download_apk_name)
 
         command_process = subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
 
@@ -409,12 +407,13 @@ def apk_analysis(download_apk_name):
         return {}
 
 
-def update_monkey(device_id=None, device_name=None, device_version=None, device_screen_size=None, begin_test_time=None,
-                                                end_test_time=None, install_time=None, package_name=None, package_version=None, whether_install=None,
-                                                whether_start=None, default_activity=None):
-    tcloud_url = "http://192.168.14.214:8088"
+def update_monkey(id=1, device_id=None, device_name=None, device_version=None, device_screen_size=None, begin_test_time=None,
+                  end_test_time=None, install_time=None, package_name=None, package_version=None, whether_install=None,
+                  whether_start=None, default_activity=None):
+    tcloud_url = "http://192.168.31.214:8088"
     try:
         request_data_template = {
+            "id": 1,
             "device_id": device_id,
             "device_name": device_name,
             "device_version": device_version,
@@ -454,7 +453,6 @@ def update_monkey(device_id=None, device_name=None, device_version=None, device_
 
 
 def quickinstall(device):
-    i = "/Users/boke/Downloads/apk/test.apk"
 
     packagename = apk_analysis(i)['package_name']
     activity_name = apk_analysis(i)['default_activity']
@@ -482,7 +480,7 @@ def quickinstall(device):
         time.sleep(5)
         if check_package_installed(packagename, device):
             print('({}) 安装 {} 成功'.format(device, packagename))
-            whether_install = "安装成功"
+            whether_install = "success"
             entire = datetime.now().strftime('%Y-%m-%d-%H:%M:%S')
             en = time.time()
             install_time = en - st
@@ -491,9 +489,9 @@ def quickinstall(device):
             whether_start = whether_start_activity(packagename, d)
         else:
             print('({}) 安装 {} 失败'.format(device, packagename))
-            whether_install = "安装失败"
+            whether_install = "file"
         device_id = 888
-        update_monkey(device_id=device_id, device_name=device, device_version=devices_version(d),
+        update_monkey(id=1, device_id=device_id, device_name=device, device_version=devices_version(d),
                       device_screen_size=screen_size(d), begin_test_time=starting, end_test_time=entire,
                       install_time=str(install_time), package_name=packagename,
                       package_version=apk_analysis(i)['version_code'], whether_install=whether_install,
