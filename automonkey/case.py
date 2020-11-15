@@ -35,17 +35,15 @@ class Case(object):
                 self.case_type = 1
             elif inputs.get('test_type') == 'performance':
                 self.case_type = 2
-            for device_dict in inputs.get('devices'):
-                device = Device()
-                device.constructor(device_dict)
-                if self.case_type == 1:
-                    case = MonkeyCase()
-                elif self.case_type == 2:
-                    case = PerformanceCase()
+                
+            if self.case_type == 1:
+                case = MonkeyCase()
+            elif self.case_type == 2:
+                case = PerformanceCase()
 
-                case.constructor(inputs.get('case'), device, self.monkey_id, self.task_ids.get(device.device_id),
-                                 self.tcloud_url)
-                self.cases.append(case)
+            case.constructor(inputs.get('case'), device, self.monkey_id, self.task_ids.get(device.device_id),
+                                self.tcloud_url)
+            self.cases.append(case)
 
     @property
     def info(self):
